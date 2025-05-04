@@ -163,71 +163,40 @@ export class AiService {
 
     // Human Detection
     const checkHumanInImage = RunnableSequence.from([
-      HumanInImageStructuredPrompt(
-        uri,
-        humanDetectionParser.getFormatInstructions(),
+      RunnableLambda.from(() =>
+        HumanInImageStructuredPrompt(uri).formatMessages({
+          // Langchain.js에서는 .format을 하면 무조건 String으로 반환됨. 만약 Message 배열을 전달하고 싶은 경우에는 무조건 formatMessages를 사용해야함
+          // 만약 .format을 사용하면 String으로만 반환되게 때문에 이점 주의
+          // https://v03.api.js.langchain.com/classes/_langchain_core.prompts.FewShotChatMessagePromptTemplate.html?_gl=1*1ibpxe8*_ga*MTQ4NjcyNDY0Mi4xNzQ2MjgzNjY5*_ga_47WX3HKKY2*czE3NDYzNzg1OTIkbzkkZzEkdDE3NDYzODE4NzUkajAkbDAkaDA.#format
+          // https://v03.api.js.langchain.com/classes/_langchain_core.prompts.FewShotChatMessagePromptTemplate.html#formatMessages
+          formatInstruction: humanDetectionParser.getFormatInstructions(),
+        }),
       ),
       this.chatModel,
-      async (response) => {
-        const responseText = response.content;
-        try {
-          return await humanDetectionParser.parse(responseText);
-        } catch (error) {
-          console.error('Fail to parse in human detection:', error);
-          return { isPersonInImage: false };
-        }
-      },
+      humanDetectionParser,
     ]);
 
     // Fashion Analysis
     const fashionAnalysisSequence = RunnableSequence.from([
       RunnableLambda.from(() =>
-        FashionAnalysisStructuredPrompt(uri).format({
+        FashionAnalysisStructuredPrompt(uri).formatMessages({
           formatInstruction: fashionAnalysisParser.getFormatInstructions(),
         }),
       ),
       this.chatModel,
-      async (response) => {
-        const responseText = response.content;
-        try {
-          const structuredOutput =
-            await fashionAnalysisParser.parse(responseText);
-          return {
-            success: true,
-            message: structuredOutput,
-          };
-        } catch (error) {
-          console.error('Fail to parse in fashion analysis:', error);
-          return {
-            success: false,
-            message: 'Failed to parse fashion analysis',
-          };
-        }
-      },
+      fashionAnalysisParser,
     ]);
 
-    // Person Detection Chain Routing
-    const processResult = RunnableBranch.from([
-      [
-        (output: HumanDetectionResult) => output.isPersonInImage === true,
-        fashionAnalysisSequence,
-      ],
-      RunnableLambda.from(() => ({
-        success: false,
-        message: 'No person detected in the image',
-      })),
-    ]);
-
-    try {
-      const humanDetectionResult = await checkHumanInImage.invoke({
-        formatInstruction: humanDetectionParser.getFormatInstructions(),
-      });
-      const finalResult = await processResult.invoke(humanDetectionResult);
-      return finalResult;
-    } catch (error) {
+    const humanDetectionResult = await checkHumanInImage.invoke({});
+    if (!humanDetectionResult.isPersonInImage) {
       return {
         success: false,
-        message: `Parsing error: ${error.message}`,
+        message: 'No person detected in the image',
+      };
+    } else {
+      return {
+        success: true,
+        message: await fashionAnalysisSequence.invoke({}),
       };
     }
   }

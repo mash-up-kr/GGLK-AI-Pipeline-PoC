@@ -1,5 +1,4 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
 
 // Function Calling 방식
@@ -48,13 +47,7 @@ export const HumanInImageSchema = z.object({
     .describe('Whether a person is detected in the image'),
 });
 
-export function HumanInImageStructuredPrompt(
-  uri: string,
-  formatInstruction: string,
-) {
-  const parser = StructuredOutputParser.fromZodSchema(HumanInImageSchema);
-  const formatInstructions = parser.getFormatInstructions();
-  console.log(formatInstructions);
+export function HumanInImageStructuredPrompt(uri: string) {
   return ChatPromptTemplate.fromMessages([
     {
       role: 'system',
