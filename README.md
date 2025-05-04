@@ -1,5 +1,15 @@
 ## 깔깔룩위원회 Node.js팀 AI PoC
 
+### env
+
+```
+OPEN_AI_TOKEN="(key)"
+LANGSMITH_TRACING=true
+LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
+LANGSMITH_API_KEY="(Langsmith API Key)"
+LANGSMITH_PROJECT="GGLK-POC"
+```
+
 ### 고려사항
 
 1. 해당 모델이 요구사항에 적합한 성능을 지녔는가(특화되어있는 분야 확인하기)
